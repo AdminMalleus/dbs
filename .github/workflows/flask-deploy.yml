@@ -1,0 +1,39 @@
+name: Deploy Flask API to Azure
+
+on:
+  push:
+    branches: [ main ]  # Trigger deployment on pushes to main branch
+  pull_request:
+    branches: [ main ]  # Optional: Trigger on pull requests for testing CI configuration
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest  # Using Ubuntu as the runner
+
+    steps:
+    - uses: actions/checkout@v2  # Checks out your repository under $GITHUB_WORKSPACE
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'  # Replace with your required version of Python
+
+    - name: Install dependencies
+      run: |
+        cd api  # Navigate into the directory containing your Flask application
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt  # Install dependencies
+
+    # Optional: Add steps for running tests here
+    - name: Run tests
+      run: |
+        cd api
+        # Add your commands to run tests, e.g., pytest
+
+    - name: Deploy to Azure
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'dbsbackend'  # Replace with your actual Azure App Service name
+        publish-profile: ${{ secrets.AZURE_APP_SERVICE_PUBLISH_PROFILE_FLASK }}  # Ensure you have this secret set in your repository
+        package: api  # Path to your Flask application
+
