@@ -175,4 +175,4 @@ def connect_prompt4():
     print("Client connected to prompt4")
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=3003)
+    socketio.run(app, debug=True)
