@@ -18,12 +18,13 @@ endpoints_and_models = [{"openai": ["gpt-4-turbo"],
 PPX_KEY = "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"
 API_KEY = "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"
 CLAUDE_KEY = "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"
+OPENAI_KEY = "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"
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 endpoints = dict(perplexity = OpenAI(api_key=PPX_KEY, base_url="https://api.perplexity.ai"),
                  groq = Groq(api_key="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"),
-                 openai = OpenAI()
+                 openai = OpenAI(api_key = OPENAI_KEY)
                  )
 
 class Stream:
