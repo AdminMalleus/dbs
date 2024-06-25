@@ -149,7 +149,11 @@ def process_prompt(prompt, model, text, prompt_text):
 @app.route('/get_models', methods=['GET'])
 def get_models():
     return jsonify({"models": [model for ep in endpoints_and_models for models in ep.values() for model in models]})
-
+  
+@app.route('/')
+def home():
+    return "App is running"
+  
 @app.route('/get_categories', methods=['GET'])
 def get_categories():
     return jsonify({'categories': list(prompts.keys())})
@@ -175,4 +179,4 @@ def connect_prompt4():
     print("Client connected to prompt4")
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app)
