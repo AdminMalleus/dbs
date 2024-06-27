@@ -25,10 +25,23 @@ jobs:
         with:
           node-version: '14'  # or whichever version you're using
 
+      - name: Use specific npm version
+        run: npm install -g npm@8.19.2
+
+      - name: Print package.json
+        run: |
+          cd ./web
+          cat package.json
+
+      - name: Clear npm cache
+        run: |
+          cd ./web
+          npm cache clean --force
+
       - name: Install Dependencies
         run: |
           cd ./web
-          npm ci  # This uses package-lock.json for a clean install
+          npm install --verbose
 
       - name: Build And Deploy
         id: builddeploy
@@ -40,7 +53,7 @@ jobs:
           app_location: "./web"
           api_location: ""
           output_location: "build"
-          app_build_command: "npm run build"  # Specify the build command
+          app_build_command: "npm run build"
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
