@@ -32,7 +32,7 @@ jobs:
 
       - name: Build
         env:
-          CI: false
+          CI: false  # This will prevent treating warnings as errors
         run: |
           cd ./web
           npm run build
