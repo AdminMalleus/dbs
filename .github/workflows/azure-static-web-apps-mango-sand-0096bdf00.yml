@@ -29,7 +29,6 @@ jobs:
         run: |
           cd ./web
           npm install
-          npm install axios@1.7.2 react-markdown@8.0.7 socket.io-client@4.7.5 form-data@4.0.0 proxy-from-env@1.1.0 @babel/plugin-proposal-private-property-in-object@7.21.0
 
       - name: Build
         env:
@@ -46,7 +45,7 @@ jobs:
           action: "upload"
           app_location: "./web"
           output_location: "build"
-          skip_app_build: true
+          app_build_command: "npm run build"
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
