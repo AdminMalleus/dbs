@@ -14,94 +14,160 @@ const LLMProcess = () => {
     const [responses, setResponses] = useState({});
     const [activeTab, setActiveTab] = useState('');
     const [activeModal, setActiveModal] = useState(null);
-    const [responseRefs, setResponseRefs] = useState({});
-    const [sockets, setSockets] = useState({});
     const [selectedCategories, setSelectedCategories] = useState({});
-  
+    const [manualScroll, setManualScroll] = useState({});
+    const responseContainerRefs = useRef({});
+    const [showScrollButton, setShowScrollButton] = useState({});
+
     useEffect(() => {
-        const fetchData = async () => {
-          try {
-            const [modelsResponse, categoriesResponse, promptsResponse] = await Promise.all([
-              axios.get('http://localhost:3003/get_models'),
-              axios.get('http://localhost:3003/get_categories'),
-              axios.get('http://localhost:3003/get_prompts')
-            ]);
-            
-            const fetchedModels = modelsResponse.data.models;
-            const fetchedCategories = categoriesResponse.data.categories;
-            const prompts = promptsResponse.data.prompts;
-      
-            setModels(fetchedModels);
-            setCategories(fetchedCategories);
-      
-            if (fetchedModels.length > 0 && fetchedCategories.length > 0) {
-              const defaultModel = fetchedModels[0];
-              const initialPromptModels = {};
-              const initialPromptTexts = {};
-              const initialResponses = {};
-              const initialRefs = {};
-              const initialSelectedCategories = {};
-      
-              fetchedCategories.forEach(category => {
-                initialPromptModels[category] = defaultModel;
-                initialPromptTexts[category] = prompts[category] || '';
-                initialResponses[category] = '';
-                initialRefs[category] = React.createRef();
-                initialSelectedCategories[category] = true; // All categories selected by default
-              });
-      
-              setPromptModels(initialPromptModels);
-              setPromptTexts(initialPromptTexts);
-              setResponses(initialResponses);
-              setResponseRefs(initialRefs);
-              setSelectedCategories(initialSelectedCategories);
-      
-              // Set the active tab to the first category (since all are initially selected)
-              setActiveTab(fetchedCategories[0]);
-            }
-          } catch (error) {
-            console.error('Failed to fetch data:', error);
+      const fetchData = async () => {
+        try {
+          const [modelsResponse, categoriesResponse, promptsResponse] = await Promise.all([
+            axios.get('http://localhost:3003/get_models'),
+            axios.get('http://localhost:3003/get_categories'),
+            axios.get('http://localhost:3003/get_prompts')
+          ]);
+          
+          const fetchedModels = modelsResponse.data.models;
+          const fetchedCategories = categoriesResponse.data.categories;
+          const prompts = promptsResponse.data.prompts;
+    
+          setModels(fetchedModels);
+          setCategories(fetchedCategories);
+    
+          if (fetchedModels.length > 0 && fetchedCategories.length > 0) {
+            const defaultModel = fetchedModels[0];
+            const initialPromptModels = {};
+            const initialPromptTexts = {};
+            const initialResponses = {};
+            const initialSelectedCategories = {};
+            const initialManualScroll = {};
+            const initialResponseContainerRefs = {};
+    
+            fetchedCategories.forEach(category => {
+              initialPromptModels[category] = defaultModel;
+              initialPromptTexts[category] = prompts[category] || '';
+              initialResponses[category] = '';
+              initialSelectedCategories[category] = true;
+              initialManualScroll[category] = false;
+              initialResponseContainerRefs[category] = React.createRef();
+            });
+    
+            setPromptModels(initialPromptModels);
+            setPromptTexts(initialPromptTexts);
+            setResponses(initialResponses);
+            setSelectedCategories(initialSelectedCategories);
+            setManualScroll(initialManualScroll);
+            responseContainerRefs.current = initialResponseContainerRefs;
+    
+            // Set the active tab to the first category (since all are initially selected)
+            setActiveTab(fetchedCategories[0]);
           }
-        };
+        } catch (error) {
+          console.error('Failed to fetch data:', error);
+        }
+      };
+    
+      fetchData();
+    }, []);
+
+    useEffect(() => {
+      Object.entries(responseContainerRefs.current).forEach(([category, ref]) => {
+        if (ref && !manualScroll[category]) {
+          ref.scrollTop = ref.scrollHeight;
+        }
+      });
+    }, [responses, manualScroll]);
+
+  const handleScroll = (category) => {
+    const container = responseContainerRefs.current[category];
+    if (container) {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isScrolledToBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 1;
       
-        fetchData();
-      }, []);
+      setManualScroll(prev => ({
+        ...prev,
+        [category]: !isScrolledToBottom
+      }));
+  
+      setShowScrollButton(prev => ({
+        ...prev,
+        [category]: !isScrolledToBottom && scrollHeight > clientHeight
+      }));
+    }
+  };
+  const scrollToBottom = (category) => {
+    const container = responseContainerRefs.current[category];
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+      setManualScroll(prev => ({
+        ...prev,
+        [category]: false
+      }));
+      setShowScrollButton(prev => ({
+        ...prev,
+        [category]: false
+      }));
+    }
+  };
+  useEffect(() => {
+    if (activeTab) {
+      const container = responseContainerRefs.current[activeTab];
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [activeTab]);
+
+  const resetScroll = (category) => {
+    setManualScroll(prev => ({
+      ...prev,
+      [category]: false
+    }));
+    setShowScrollButton(prev => ({
+      ...prev,
+      [category]: false
+    }));
+    const container = responseContainerRefs.current[category];
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  };
 
   useEffect(() => {
     if (categories.length === 0) return;
-
+  
     const newSockets = {};
     categories.forEach((category, index) => {
       const socket = io(`http://localhost:3003/prompt${index + 1}`);
       newSockets[category] = socket;
-
+  
       socket.on('response', (data) => {
         if (data.response === '[DONE]') {
           console.log(`Processing done for ${category}.`);
+          resetScroll(category);
         } else {
           setResponses(prevResponses => ({
             ...prevResponses,
-            [category]: prevResponses[category] + data.response
+            [category]: (prevResponses[category] || '') + data.response
           }));
         }
       });
-
+  
       socket.on('connect', () => console.log(`Connected to socket for ${category}`));
       socket.on('disconnect', () => console.log(`Disconnected from socket for ${category}`));
       socket.on('connect_error', (err) => console.error(`Socket connection error for ${category}:`, err));
     });
-
-    setSockets(newSockets);
-
+  
     return () => {
       Object.values(newSockets).forEach(socket => socket.disconnect());
     };
   }, [categories]);
 
   useEffect(() => {
-    Object.entries(responseRefs).forEach(([category, ref]) => {
-      if (ref.current) {
-        ref.current.scrollTop = ref.current.scrollHeight;
+    Object.entries(responseContainerRefs.current).forEach(([category, ref]) => {
+      if (ref) {
+        ref.scrollTop = ref.scrollHeight;
       }
     });
   }, [responses]);
@@ -109,10 +175,12 @@ const LLMProcess = () => {
   const handleProcess = async () => {
     const initialResponses = {};
     categories.forEach(category => {
-      initialResponses[category] = '';
+      if (selectedCategories[category]) {
+        initialResponses[category] = '';
+      }
     });
     setResponses(initialResponses);
-
+  
     try {
       const selectedPromptModels = {};
       const selectedPromptTexts = {};
@@ -123,7 +191,7 @@ const LLMProcess = () => {
           selectedPromptTexts[category] = promptTexts[category];
         }
       });
-
+  
       await axios.post('http://localhost:3003/process', { 
         text, 
         promptModels: selectedPromptModels, 
@@ -207,61 +275,68 @@ const LLMProcess = () => {
       <div className="response-container">
       <div className="tabs">
         {categories.map((category) => (
-            selectedCategories[category] && (
+          selectedCategories[category] && (
             <div key={category} className="tab-container">
-                <button
+              <div className="model-dropdown">
+                <select
+                  value={promptModels[category]}
+                  onChange={(e) => handlePromptModelChange(category, e.target.value)}
+                >
+                  {models.map(model => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
+              </div>
+              <button
                 className={`tab ${activeTab === category ? 'active' : ''}`}
                 onClick={() => setActiveTab(category)}
-                >
+              >
                 {category}
-                </button>
-                <button onClick={() => openModal(category)} className="settings-button">
+              </button>
+              <button onClick={() => openModal(category)} className="settings-button">
                 ⚙️
-                </button>
+              </button>
             </div>
-            )
+          )
         ))}
-        </div>
-        <div className="responses">
-            {categories.map((category) => (
-                selectedCategories[category] && (
-                <div
-                    key={category}
-                    className={`response ${activeTab === category ? 'active' : ''}`}
-                    ref={responseRefs[category]}
-                >
-                    <ReactMarkdown>{responses[category]}</ReactMarkdown>
-                </div>
-                )
-            ))}
+      </div>
+      <div className="responses">
+      {categories.map((category) => (
+        selectedCategories[category] && (
+          <div key={category} className="response-wrapper">
+            <div
+              className={`response ${activeTab === category ? 'active' : ''}`}
+              ref={el => responseContainerRefs.current[category] = el}
+              onScroll={() => handleScroll(category)}
+            >
+              <ReactMarkdown>{responses[category] || ''}</ReactMarkdown>
             </div>
+              {showScrollButton[category] && (
+                <button 
+                  className="scroll-to-bottom-button"
+                  onClick={() => scrollToBottom(category)}
+                >
+                  ▼
+                </button>
+              )}
+            </div>
+          )
+        ))}
+      </div>
       </div>
   
       {categories.map((category) => (
         <Modal key={category} isOpen={activeModal === category} onClose={closeModal}>
-          <h2>{category} Settings</h2>
-          <div className="prompt-model-selector">
-            <label htmlFor={`${category}-model`}>Model:</label>
-            <select
-              id={`${category}-model`}
-              value={promptModels[category]}
-              onChange={(e) => handlePromptModelChange(category, e.target.value)}
-              className="dropdown"
-            >
-              {models.map(model => (
-                <option key={model} value={model}>{model}</option>
-              ))}
-            </select>
-          </div>
-          <h3>Prompt Text:</h3>
-          <textarea
-            value={promptTexts[category]}
-            onChange={(e) => handlePromptTextChange(category, e.target.value)}
-            className="modal-textarea"
-            placeholder={`Enter ${category} text here...`}
-          />
-          <button onClick={closeModal} className="modal-save-button">Save</button>
-        </Modal>
+        <h2>{category} Settings</h2>
+        <h3>Prompt Text:</h3>
+        <textarea
+          value={promptTexts[category]}
+          onChange={(e) => handlePromptTextChange(category, e.target.value)}
+          className="modal-textarea"
+          placeholder={`Enter ${category} text here...`}
+        />
+        <button onClick={closeModal} className="modal-save-button">Save</button>
+      </Modal>
       ))}
     </div>
   );
