@@ -39,6 +39,7 @@ Highlight areas of imprecise language or lack of specific detail.
 Identify tautologies or redundant statements.
 Analyze the potential effects of imprecision and tautologies on the text's informativeness.
 """
+
 logic_and_arg = """Logical and Argumentative Analysis:
 Conduct a thorough examination of the given text, focusing on the logical structure, argumentation, and evidence presentation. Your analysis should address the following aspects:
 1. Trustworthiness Assessment:
@@ -234,6 +235,23 @@ Analyze self-referential language and author positioning within the text.
 
 This refactored prompt incorporates a more comprehensive approach to text analysis, integrating elements of pragmatics and discourse analysis. It provides a structured framework for evaluating various aspects of language use, from surface-level features to deeper semantic and pragmatic implications.
 here is the text to evaluate:
+"""
+
+orwell_langauge = """ analyze and look for:
+1. Staleness of imagery and lack of precision are common issues in modern writing, especially political writing.
+2. Overuse of dying metaphors: Using clichéd metaphors that have lost their evocative power.
+3. Operators or verbal false limbs: Using unnecessarily complex phrases instead of simple verbs.
+4. Pretentious diction: Using overly formal or scientific-sounding words to appear more sophisticated or impartial.
+5. Meaningless words: Using vague terms that lack clear definitions, especially in political contexts.
+6. Excessive use of foreign phrases, scientific words, or jargon when everyday English equivalents exist.
+7. Overreliance on passive voice and noun constructions instead of active verbs.
+8. Use of euphemisms to obscure unpleasant truths or defend morally questionable actions.
+9. Vague or cloudy language that obscures meaning, often used to defend political positions.
+10. Inflated style: Using an abundance of long words to cover up a lack of substance.
+11. Ready-made phrases: Stringing together pre-fabricated phrases rather than constructing original sentences.
+12. Political orthodoxy tends to produce lifeless, imitative writing styles.
+13. Insincerity often leads to unclear language and the use of long words to hide true intentions.
+14. The gap between declared and real aims often results in the use of long words and exhausted idioms.
 """
 
 

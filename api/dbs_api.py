@@ -6,25 +6,32 @@ import json
 import requests
 from groq import Groq
 import anthropic
-from text_analysis_prompts import ling_and_seman, logic_and_arg, prag_and_disct, bias_and_sub
-endpoints_and_models = [{"openai": ["gpt-4-turbo"],
+import os
+from text_analysis_prompts import ling_and_seman, logic_and_arg, prag_and_disct, bias_and_sub, orwell_langauge
+from conversational_prompts import first, second, third, fourth
+from azure.storage.blob import ContainerClient, BlobClient
+
+import json
+endpoints_and_models = [{"anthropic": ["claude-3-5-sonnet-20240620"],
+                        "openai": ["gpt-4-turbo"],
                           "perplexity":["llama-3-8b-instruct", "llama-3-70b-instruct"],
                           "groq":["llama3-8b-8192", "llama3-70b-8192"],
-                          "anthropic": ["claude-3-5-sonnet-20240620"]
+                
     }
                         
                         ]
+# Your Blob SAS URL
+container_sas_url = "https://dbsdata.blob.core.windows.net/dbscontainer?sp=racwdl&st=2024-06-27T07:46:21Z&se=2024-06-27T15:46:21Z&sv=2022-11-02&sr=c&sig=oT5Qoltc2YlsNhvkah2fIkUPnEAxMg9sEFJyO2%2BRX9g%3D"
+container_client = ContainerClient.from_container_url(container_sas_url)
+keys = json.loads(container_client.get_blob_client('dbscontainer').download_blob().readall())
+PPX_KEY, CLAUDE_KEY, OPENAI_KEY, GROQ_KEY  = keys['perplexity'], keys['claude'], keys['openai'], keys['groq']
 
-PPX_KEY = "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"
-API_KEY = "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"
-CLAUDE_KEY = "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"
-OPENAI_KEY = "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"
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 endpoints = dict(perplexity = OpenAI(api_key=PPX_KEY, base_url="https://api.perplexity.ai"),
-                 groq = Groq(api_key="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"),
-                 openai = OpenAI(api_key = OPENAI_KEY)
+                 groq = Groq(api_key=GROQ_KEY),
+                 openai = OpenAI(api_key=OPENAI_KEY)
                  )
 
 class Stream:
@@ -52,26 +59,23 @@ class Stream:
 
 
 client = anthropic.Anthropic(
-    # defaults to os.environ.get("ANTHROPIC_API_KEY")
     api_key=CLAUDE_KEY,
 )
 
-# message = client.messages.create(
-#     model="claude-3-5-sonnet-20240620",
-#     max_tokens=1024,
-#     messages=[
-#         {"role": "user", "content": "tell me main categories of languages"}
-#     ],
-#     stream=True
-# )
 
-# stream = Stream(prompt="tell me main categories of languages", endpoints=endpoints)
-# messages = [m for m in stream("gpt-4-turbo", 0)]
+# prompts = {'Language Structure & Meaning':ling_and_seman,
+#            'Logic & Argumentation':logic_and_arg,
+#            'Context & Discourse':prag_and_disct,
+#            'Bias & Author Intent':bias_and_sub
+#            }
 
-prompts = {'Language Structure & Meaning':ling_and_seman,
-           'Logic & Argumentation':logic_and_arg,
-           'Context & Discourse':prag_and_disct,
-           'Bias & Author Intent':bias_and_sub}
+prompts = {'Language Structure & Meaning':first,
+           'Logic & Argumentation':second,
+           'Context & Discourse':third,
+           'Bias & Author Intent':fourth
+           }
+
+           # 'Orwell langauge analysis': orwell_langauge}
 
 def get_key_index(key): return list(prompts.keys()).index(key) + 1
 
@@ -98,44 +102,12 @@ class StreamAnth:
 @app.route('/process', methods=['POST'])
 def process():
     data = request.get_json()
-    # print(data)
-    # Start a background task for each prompt
+    # print(data['promptModels'])
     for prompt, model in data['promptModels'].items():
         socketio.start_background_task(process_prompt, prompt, model, data['text'], data['promptTexts'][prompt])
     
     return jsonify({'status': 'processing started'})
 
-# @app.route('/process', methods=['POST'])
-# def process():
-#     data = request.get_json()
-#     # print(data)
-
-#     # Start a background task for each prompt
-#     for prompt, model in data['promptModels'].items():
-#         stream = Stream(prompt=prompts[prompt] +"\n here's the text to analyse \n" + data['text'], endpoints=endpoints)
-#         result = ''.join([t for t in stream(model, 0)])
-#         socketio.emit('response', {'prompt': prompt, 'response': result}, namespace=f'/prompt{get_key_index(prompt)}')
-
-#         # socketio.start_background_task(process_prompt, prompt, model, data['text'], data['promptTexts'][prompt])
-    
-#     return jsonify({'status': 'processing started'})
-
-
-# def process_prompt(prompt, model, text, prompt_text):
-#     buffer = []
-#     if 'claude' in model:
-#         stream = StreamAnth(prompt=prompts[prompt] +"\n here's the text to analyse\n" + text)
-#     else:
-#         stream = Stream(prompt=prompts[prompt] +"\n here's the text to analyse \n" + text, endpoints=endpoints)
-#     for token in stream(model, 0):
-#         # print(buffer)
-#         if token == "####" or token =="###" or 1 <= len(buffer) <= 10:
-#             buffer.append(token)
-#         if len(buffer) == 0:
-#             socketio.emit('response', {'prompt': prompt, 'response': token}, namespace=f'/prompt{get_key_index(prompt)}')
-#         if len(buffer) >= 10:
-#             socketio.emit('response', {'prompt': prompt, 'response': ''.join(buffer)}, namespace=f'/prompt{get_key_index(prompt)}')
-#             buffer = []
 def process_prompt(prompt, model, text, prompt_text):
     # print(prompt)
     if 'claude' in model:
@@ -143,18 +115,15 @@ def process_prompt(prompt, model, text, prompt_text):
     else:
         stream = Stream(prompt=prompts[prompt] +"\n here's the text to analyse \n" + text, endpoints=endpoints)
     for token in stream(model, 0):
+        # print(prompt)
         socketio.emit('response', {'prompt': prompt, 'response': token}, namespace=f'/prompt{get_key_index(prompt)}')
-    
+        
     socketio.emit('response', {'prompt': prompt, 'response': '[DONE]'}, namespace=f'/prompt{get_key_index(prompt)}')
 
 @app.route('/get_models', methods=['GET'])
 def get_models():
     return jsonify({"models": [model for ep in endpoints_and_models for models in ep.values() for model in models]})
-  
-@app.route('/')
-def home():
-    return "App is running"
-  
+
 @app.route('/get_categories', methods=['GET'])
 def get_categories():
     return jsonify({'categories': list(prompts.keys())})
@@ -178,6 +147,9 @@ def connect_prompt3():
 @socketio.on('connect', namespace='/prompt4')
 def connect_prompt4():
     print("Client connected to prompt4")
+    
 
+    
+    
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app, debug=True, port=3003)
