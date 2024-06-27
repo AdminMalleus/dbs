@@ -23,9 +23,9 @@ const LLMProcess = () => {
       const fetchData = async () => {
         try {
           const [modelsResponse, categoriesResponse, promptsResponse] = await Promise.all([
-            axios.get('http://localhost:3003/get_models'),
-            axios.get('http://localhost:3003/get_categories'),
-            axios.get('http://localhost:3003/get_prompts')
+            axios.get('https://dbsbackend.azurewebsites.net/get_models'),
+            axios.get('https://dbsbackend.azurewebsites.net/get_categories'),
+            axios.get('https://dbsbackend.azurewebsites.net/get_prompts')
           ]);
           
           const fetchedModels = modelsResponse.data.models;
@@ -139,8 +139,10 @@ const LLMProcess = () => {
   
     const newSockets = {};
     categories.forEach((category, index) => {
-      const socket = io(`http://localhost:3003/prompt${index + 1}`);
-      newSockets[category] = socket;
+      const socket = io(`https://dbsbackend.azurewebsites.net/prompt${index + 1}`, {
+        transports: ['websocket'],
+        upgrade: false
+      });      newSockets[category] = socket;
   
       socket.on('response', (data) => {
         if (data.response === '[DONE]') {
@@ -192,7 +194,7 @@ const LLMProcess = () => {
         }
       });
   
-      await axios.post('http://localhost:3003/process', { 
+      await axios.post('https://dbsbackend.azurewebsites.net/process', { 
         text, 
         promptModels: selectedPromptModels, 
         promptTexts: selectedPromptTexts 

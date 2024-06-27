@@ -10,6 +10,7 @@ import os
 from text_analysis_prompts import ling_and_seman, logic_and_arg, prag_and_disct, bias_and_sub, orwell_langauge
 from conversational_prompts import first, second, third, fourth
 from azure.storage.blob import ContainerClient, BlobClient
+from flask_cors import CORS
 
 import json
 endpoints_and_models = [{"anthropic": ["claude-3-5-sonnet-20240620"],
@@ -26,13 +27,19 @@ container_client = ContainerClient.from_container_url(container_sas_url)
 keys = json.loads(container_client.get_blob_client('dbscontainer').download_blob().readall())
 PPX_KEY, CLAUDE_KEY, OPENAI_KEY, GROQ_KEY  = keys['perplexity'], keys['claude'], keys['openai'], keys['groq']
 
+# app = Flask(__name__)
+# CORS(app)
+# socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
 app = Flask(__name__)
-CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+CORS(app, resources={r"/*": {"origins": "https://mango-sand-0096bdf00.5.azurestaticapps.net"}})
+socketio = SocketIO(app, cors_allowed_origins="https://mango-sand-0096bdf00.5.azurestaticapps.net", async_mode='threading')
+
 endpoints = dict(perplexity = OpenAI(api_key=PPX_KEY, base_url="https://api.perplexity.ai"),
                  groq = Groq(api_key=GROQ_KEY),
                  openai = OpenAI(api_key=OPENAI_KEY)
                  )
+
 
 class Stream:
     def __init__(self, prompt,
