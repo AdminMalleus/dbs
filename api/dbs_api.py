@@ -9,9 +9,8 @@ import anthropic
 import os
 from text_analysis_prompts import ling_and_seman, logic_and_arg, prag_and_disct, bias_and_sub, orwell_langauge
 from conversational_prompts import first, second, third, fourth
-from azure.storage.blob import ContainerClient, BlobClient
+from azure.storage.blob import ContainerClient, BlobClient, BlobServiceClient
 from flask_cors import CORS
-
 import json
 endpoints_and_models = [{"anthropic": ["claude-3-5-sonnet-20240620"],
                         "openai": ["gpt-4-turbo"],
@@ -21,10 +20,10 @@ endpoints_and_models = [{"anthropic": ["claude-3-5-sonnet-20240620"],
     }
                         
                         ]
-# Your Blob SAS URL
-container_sas_url = "https://dbsdata.blob.core.windows.net/dbscontainer?sp=racwdl&st=2024-06-27T07:46:21Z&se=2024-06-27T15:46:21Z&sv=2022-11-02&sr=c&sig=oT5Qoltc2YlsNhvkah2fIkUPnEAxMg9sEFJyO2%2BRX9g%3D"
-container_client = ContainerClient.from_container_url(container_sas_url)
-keys = json.loads(container_client.get_blob_client('dbscontainer').download_blob().readall())
+
+connection_string = "DefaultEndpointsProtocol=https;AccountName=dbsdata;AccountKey=mBcxokUnDx2NyCziXnbG47wBCc2quNNO1gwiXyiRkwsBylxoLgLOtA5couiwdF6XfWPbrHlrXhCX+AStK9RfpA==;EndpointSuffix=core.windows.net"
+blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+keys = json.loads(blob_service_client.get_container_client("dbscontainer").get_blob_client('dbscontainer').download_blob().readall())
 PPX_KEY, CLAUDE_KEY, OPENAI_KEY, GROQ_KEY  = keys['perplexity'], keys['claude'], keys['openai'], keys['groq']
 
 # app = Flask(__name__)
